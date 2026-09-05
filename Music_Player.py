@@ -1,5 +1,7 @@
 import subprocess
 
+# @input: Name of a specific Playlist
+# This function calls Apple music to play the playlist
 def play_playlist(name):
     script = f'''
     tell application "Music" 
@@ -19,4 +21,4 @@ def play_playlist(name):
 
 
 
-play_playlist("Classical")   # ← 换成你库里真实存在的歌单名
+play_playlist("Classical")   # ← 输入你库里真实存在的歌单名
