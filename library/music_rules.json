@@ -1,0 +1,253 @@
+{
+  "schema_version": "3.0",
+  "default_category": "others",
+  "categories": {
+    "work_study": {
+      "display_name": "Work/Study",
+      "song_set_key": "work_study_songs",
+      "playback": "random"
+    },
+    "creativity": {
+      "display_name": "Creativity",
+      "song_set_key": "creativity_songs",
+      "playback": "random"
+    },
+    "intense": {
+      "display_name": "intense",
+      "song_set_key": "intense_songs",
+      "playback": "random"
+    },
+    "deep_thinking": {
+      "display_name": "deep thinking",
+      "song_set_key": "deep_thinking_songs",
+      "playback": "random"
+    },
+    "relaxation": {
+      "display_name": "relax",
+      "song_set_key": "relaxation_songs",
+      "playback": "random"
+    },
+    "others": {
+      "display_name": "Others",
+      "song_set_key": "all_songs",
+      "playback": "random"
+    }
+  },
+  "context_rules": {
+    "apps": {
+      "Visual Studio Code": "deep_thinking",
+      "Terminal": "deep_thinking",
+      "iTerm2": "deep_thinking",
+      "Xcode": "deep_thinking",
+      "PyCharm": "deep_thinking",
+      "JupyterLab": "deep_thinking",
+      "RStudio": "deep_thinking",
+      "Microsoft Word": "work_study",
+      "Microsoft Excel": "work_study",
+      "Pages": "work_study",
+      "Numbers": "work_study",
+      "Preview": "work_study",
+      "Notion": "work_study",
+      "Figma": "creativity",
+      "Canva": "creativity",
+      "Adobe Photoshop": "creativity",
+      "Adobe Illustrator": "creativity",
+      "Logic Pro": "creativity",
+      "GarageBand": "creativity",
+      "Ableton Live": "creativity",
+      "Steam": "intense",
+      "Chess": "intense"
+    },
+    "websites": {
+      "Google Docs": "work_study",
+      "Google Sheets": "work_study",
+      "Canvas": "work_study",
+      "Gradescope": "work_study",
+      "Overleaf": "work_study",
+      "Notion": "work_study",
+      "ChatGPT": "deep_thinking",
+      "GitHub": "deep_thinking",
+      "Stack Overflow": "deep_thinking",
+      "LeetCode": "deep_thinking",
+      "Google Scholar": "deep_thinking",
+      "Wikipedia": "deep_thinking",
+      "Figma": "creativity",
+      "Canva": "creativity",
+      "Pinterest": "creativity",
+      "Behance": "creativity",
+      "Chess.com": "intense",
+      "TradingView": "intense",
+      "ESPN": "intense",
+      "Instagram": "relaxation",
+      "Reddit": "relaxation",
+      "Amazon": "relaxation",
+      "YouTube": "relaxation",
+      "Netflix": "relaxation"
+    }
+  },
+  "music_library_source": {
+    "application": "Music",
+    "access_method": "AppleScript",
+    "source_playlist": "collab",
+    "track_collection_expression": "tracks of playlist collab",
+    "track_properties": {
+      "song_id": "persistent ID",
+      "song_name": "name",
+      "genre": "genre",
+      "bpm": "bpm"
+    },
+    "classification_property": "genre",
+    "classification_note": "test.py currently reads name and bpm from tracks in collab. Genre classification should read genre of each track from the same playlist."
+  },
+  "genre_to_categories": {
+    "Alternative": [
+      "creativity"
+    ],
+    "Anime": [
+      "creativity"
+    ],
+    "Blues": [
+      "relaxation"
+    ],
+    "Brazilian": [
+      "creativity"
+    ],
+    "Children's Music": [
+      "relaxation"
+    ],
+    "Chinese": [
+      "creativity"
+    ],
+    "Christian & Gospel": [
+      "relaxation"
+    ],
+    "Classical": [
+      "work_study",
+      "deep_thinking"
+    ],
+    "Comedy": [
+      "relaxation"
+    ],
+    "Country": [
+      "relaxation"
+    ],
+    "Dance": [
+      "intense"
+    ],
+    "Electronic": [
+      "creativity",
+      "intense"
+    ],
+    "Enka": [
+      "relaxation"
+    ],
+    "Fitness & Workout": [
+      "intense"
+    ],
+    "French Pop": [
+      "creativity"
+    ],
+    "German Folk": [
+      "relaxation"
+    ],
+    "German Pop": [
+      "creativity"
+    ],
+    "Hip-Hop/Rap": [
+      "intense"
+    ],
+    "Holiday": [
+      "relaxation"
+    ],
+    "Indian": [
+      "creativity"
+    ],
+    "Instrumental": [
+      "work_study",
+      "deep_thinking"
+    ],
+    "J-Pop": [
+      "creativity"
+    ],
+    "Jazz": [
+      "work_study",
+      "relaxation"
+    ],
+    "K-Pop": [
+      "creativity",
+      "intense"
+    ],
+    "Karaoke": [
+      "relaxation"
+    ],
+    "Kayokyoku": [
+      "creativity"
+    ],
+    "Korean": [
+      "creativity"
+    ],
+    "Latino": [
+      "creativity",
+      "intense"
+    ],
+    "New Age": [
+      "deep_thinking",
+      "relaxation"
+    ],
+    "Pop": [
+      "creativity"
+    ],
+    "R&B/Soul": [
+      "relaxation"
+    ],
+    "Reggae": [
+      "relaxation"
+    ],
+    "Rock": [
+      "relaxation"
+    ],
+    "Singer/Songwriter": [
+      "creativity",
+      "relaxation"
+    ],
+    "Soundtrack": [
+      "deep_thinking"
+    ],
+    "Spoken Word": [
+      "deep_thinking"
+    ],
+    "Vocal": [
+      "relaxation"
+    ],
+    "World": [
+      "creativity"
+    ]
+  },
+  "song_assignment_policy": {
+    "source_song_set": "all_songs",
+    "source_playlist": "collab",
+    "genre_input": "genre of Apple Music track",
+    "genre_input_type": "string",
+    "genre_matching": "case_insensitive_exact_name",
+    "multiple_genre_delimiters": [
+      ";",
+      ","
+    ],
+    "never_split_on": "/",
+    "multiple_genres": "split_then_union_all_matching_categories",
+    "prevent_duplicate_song_ids_inside_set": true,
+    "song_unique_key": "persistent ID",
+    "unmapped_genre": "keep_in_all_songs_only",
+    "others_song_source": "all_songs"
+  },
+  "context_matching_policy": {
+    "input": "detected_display_name",
+    "priority": [
+      "website",
+      "app",
+      "default"
+    ],
+    "normalize_whitespace": true,
+    "case_insensitive": true
+  }
+}
