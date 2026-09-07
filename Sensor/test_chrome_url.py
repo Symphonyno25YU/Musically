@@ -43,7 +43,10 @@ while True:
 
     if current_url and current_url != previous_url:
         keyword = url_to_keyword(current_url)
-        print("Chrome URL changed:", current_url, "->", keyword)
+        print(keyword)
         previous_url = current_url
 
     time.sleep(2)
+
+
+
