@@ -1,9 +1,9 @@
 {
   "default_category": "others",
   "categories": {
-    "work_study": {
+    "workstudy": {
       "display_name": "Work/Study",
-      "song_set_key": "work_study_songs",
+      "song_set_key": "workstudy_songs",
       "playback": "random"
     },
     "creativity": {
@@ -41,12 +41,12 @@
       "PyCharm": "deepthinking",
       "JupyterLab": "deepthinking",
       "RStudio": "deepthinking",
-      "Microsoft Word": "work_study",
-      "Microsoft Excel": "work_study",
-      "Pages": "work_study",
-      "Numbers": "work_study",
-      "Preview": "work_study",
-      "Notion": "work_study",
+      "Microsoft Word": "workstudy",
+      "Microsoft Excel": "workstudy",
+      "Pages": "workstudy",
+      "Numbers": "workstudy",
+      "Preview": "workstudy",
+      "Notion": "workstudy",
       "Figma": "creativity",
       "Canva": "creativity",
       "Adobe Photoshop": "creativity",
@@ -58,11 +58,11 @@
       "Chess": "intense"
     },
     "websites": {
-      "docs": "work_study",
-      "Canvas": "work_study",
-      "Gradescope": "work_study",
-      "Overleaf": "work_study",
-      "Notion": "work_study",
+      "docs": "workstudy",
+      "Canvas": "workstudy",
+      "Gradescope": "workstudy",
+      "Overleaf": "workstudy",
+      "Notion": "workstudy",
       "ChatGPT": "deepthinking",
       "GitHub": "deepthinking",
       "StackOverflow": "deepthinking",
