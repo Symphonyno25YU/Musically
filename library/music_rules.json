@@ -92,8 +92,7 @@
       "genre": "genre",
       "bpm": "bpm"
     },
-    "classification_property": "genre",
-    "classification_note": "test.py currently reads name and bpm from tracks in collab. Genre classification should read genre of each track from the same playlist."
+    "classification_property": "genre"
   },
   
   "song_assignment_policy": {
@@ -144,6 +143,7 @@
     "Vimeo",
     "Peacock",
     "Paramount+",
-    "Crunchyroll"
+    "Crunchyroll",
+    "music"
   ]}
 }
