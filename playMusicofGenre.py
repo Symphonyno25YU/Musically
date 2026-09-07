@@ -130,5 +130,8 @@ def main():
         pass
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     main()
 #nb
+=======
+>>>>>>> ff637ef8ee565c524549ab46a49e561dec14ee3b
