@@ -112,4 +112,4 @@ def play_song_for_keyword(keyword):
 
 
 if __name__ == "__main__":
-    
+    play_song_for_keyword("deepthinking")
