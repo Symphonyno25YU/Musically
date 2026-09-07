@@ -1,100 +1,80 @@
- {
-    "Alternative": [
-    "Just",
-    "American Idiot",
-    "dinosaurs",
+{
+  "relax": [
     "evening",
-    "It Won't Always Be Like This",
-    "505",
     "Flying :))",
-    "exile (feat. Bon Iver)",
-    "Whatever It Takes",
-    "Bleeding Out"
+    "Wherever you are",
+    "2 Soon",
+    "The Rest of Our Summer",
+    "Water the Flowers, Pray for a Garden",
+    "Eastside (Acoustic)",
+    "Show Me Love",
+    "Night Changes",
+    "long way home",
+    "Dreams",
+    "Lover",
+    "Love Yourself",
+    "I Quit Drinking",
+    "Here with Me"
   ],
-  "Rock": [
+  "study&work": [
+    "Merry Christmas Mr. Lawrence (Version for Piano Trio)",
+    "Honey Lemon Soda - Main Theme"
+  ],
+  "intense": [
+    "American Idiot",
+    "Whatever It Takes",
+    "Bleeding Out",
     "We Are",
     "Stand Out Fit In",
     "Delusion:All",
     "Vandalize",
-    "Listen",
     "I'm a Mess",
     "REVIVER",
-    "Wherever you are",
     "The Kill (Bury Me)",
-    "Mr. Brightside"
-  ],
-  "Hip-Hop/Rap": [
+    "Mr. Brightside",
     "Lose Yourself (From \"8 Mile\")",
-    "Everybody Dies In Their Nightmares",
     "GO",
     "Affirmative Action (feat. AZ, Cormega & Foxy Brown)",
-    "Life Goes On",
-    "2 Soon"
-  ],
-  "K-Pop": [
-    "Rock with you",
-    "Haru Haru",
     "HOME SWEET HOME (feat. TAEYANG & DAESUNG)",
-    "I AM"
-  ],
-  "Mandopop": [
-    "The Rest of Our Summer"
-  ],
-  "Pop": [
-    "Water the Flowers, Pray for a Garden",
-    "Like 1999",
-    "Oh shit…are we in love?",
-    "Roommates",
-    "Eastside (Acoustic)",
     "F*CK YOU, GOODBYE (feat. Machine Gun Kelly)",
-    "Price Tag",
-    "The Outsider",
-    "Show Me Love",
-    "Night Changes",
     "She Looks So Perfect",
-    "Dream",
-    "long way home",
-    "Dreams",
     "Stacy's Mom",
-    "Lover",
-    "Love Yourself",
-    "Despacito (feat. Justin Bieber) [Remix]",
-    "Are you happy?",
-    "Counting Stars",
-    "Apologize",
-    "Espresso",
-    "Manchild",
-    "I Quit Drinking",
-    "When Did You Stop Loving Me?"
-  ],
-  "Classical Crossover": [
-    "Croatian Rhapsody",
-    "Merry Christmas Mr. Lawrence (Version for Piano Trio)",
-    "Honey Lemon Soda - Main Theme"
-  ],
-  "Soundtrack": [
-    "Wake Up, Get Up, Get Out There"
-  ],
-  "Chinese Hip-Hop": [
-    "很久很久"
-  ],
-  "Hard Rock": [
-    "Revolution"
-  ],
-  "Indie Rock": [
-    "Acquiesce (Remastered)"
-  ],
-  "Dance": [
-    "There for You"
-  ],
-  "Downtempo": [
-    "Here with Me"
-  ],
-  "Classical": [
-    "Symphony No. 25 in G Minor, K. 183: 1. Allegro con brio",
+    "Revolution",
     "Symphony No. 9 In D Minor, Op. 125 \"Choral\": Ode an Die Freude"
   ],
-  "R&B/Soul": [
+  "deep thinking": [
+    "Just",
+    "dinosaurs",
+    "505",
+    "exile (feat. Bon Iver)",
+    "Listen",
+    "Everybody Dies In Their Nightmares",
+    "Haru Haru",
+    "Roommates",
+    "The Outsider",
+    "Are you happy?",
+    "Apologize",
+    "When Did You Stop Loving Me?",
+    "很久很久",
     "Broken"
+  ],
+  "creative": [
+    "It Won't Always Be Like This",
+    "Life Goes On",
+    "Rock with you",
+    "I AM",
+    "Like 1999",
+    "Oh shit…are we in love?",
+    "Price Tag",
+    "Dream",
+    "Despacito (feat. Justin Bieber) [Remix]",
+    "Counting Stars",
+    "Espresso",
+    "Manchild",
+    "Croatian Rhapsody",
+    "Wake Up, Get Up, Get Out There",
+    "Acquiesce (Remastered)",
+    "There for You",
+    "Symphony No. 25 in G Minor, K. 183: 1. Allegro con brio"
   ]
 }
