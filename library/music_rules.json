@@ -1,5 +1,4 @@
 {
-  "schema_version": "3.0",
   "default_category": "others",
   "categories": {
     "work_study": {
@@ -99,6 +98,7 @@
     "classification_property": "genre",
     "classification_note": "test.py currently reads name and bpm from tracks in collab. Genre classification should read genre of each track from the same playlist."
   },
+  
   "genre_to_categories": {
     "Alternative": [
       "creativity"
@@ -249,5 +249,28 @@
     ],
     "normalize_whitespace": true,
     "case_insensitive": true
-  }
+  },
+
+  "no_music_websites": {
+  "action": "pause_music",
+  "resume_after_leaving": true,
+  "names": [
+    "Bilibili",
+    "YouTube",
+    "YouTube TV",
+    "Netflix",
+    "Disney+",
+    "HBO",
+    "HBO Max",
+    "Max",
+    "Hulu",
+    "Prime Video",
+    "Amazon Prime Video",
+    "Apple TV+",
+    "Twitch",
+    "Vimeo",
+    "Peacock",
+    "Paramount+",
+    "Crunchyroll"
+  ]}
 }
