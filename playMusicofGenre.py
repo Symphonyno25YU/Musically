@@ -4,10 +4,10 @@ import subprocess
 import time
 from pathlib import Path
 
-from test_chrome_url import get_current_chrome_context, url_to_keyword
-from pathlib import Path
+from test_chrome_url import get_current_chrome_context
 
-LIBRARY_PATH = Path(__file__).parent / "library" / "music_genre.json"
+
+LIBRARY_PATH = Path(__file__).resolve().parent / "library" / "music_genre.json"
 
 ALLOWED_KEYWORDS = {
     "workstudy",
@@ -15,119 +15,108 @@ ALLOWED_KEYWORDS = {
     "deepthinking",
     "relaxation",
     "intense",
-    "None"
 }
 
 
-def play_song_for_keyword(keyword):
-    """Choose a song from a keyword group and play it in 'collab'.
-
-    The JSON file must use the five activity keywords as keys, with a list of
-    song names as each value.
-    """
-    keyword = keyword.strip().casefold()
-
-    if keyword not in ALLOWED_KEYWORDS:
-        allowed = ", ".join(sorted(ALLOWED_KEYWORDS))
-        raise ValueError(f"Unknown keyword: {keyword}. Use one of: {allowed}")
+def play_song_for_keyword(keyword=None):
+    """Choose and play a song from the matching collab playlist category."""
 
     with LIBRARY_PATH.open(encoding="utf-8") as file:
         music_library = json.load(file)
 
-    is_random_request = keyword is None or (
+    # None or "none" means choose a random category.
+    if keyword is None or (
         isinstance(keyword, str) and keyword.strip().casefold() == "none"
-    )
-
-    if is_random_request:
+    ):
         available_keywords = [
-            library_keyword
-            for library_keyword, library_songs in music_library.items()
-            if library_songs
+            name for name, songs in music_library.items() if songs
         ]
+
         if not available_keywords:
-            print(f"No keyword groups with songs found in {LIBRARY_PATH}.")
+            print("No non-empty categories found.")
             return None
+
         keyword = random.choice(available_keywords)
     else:
-        if not isinstance(keyword, str):
-            raise TypeError("keyword must be a string or None")
-
         keyword = keyword.strip().casefold()
-        if keyword not in ALLOWED_KEYWORDS:
-            allowed = ", ".join(sorted(ALLOWED_KEYWORDS))
-            raise ValueError(f"Unknown keyword: {keyword}. Use one of: {allowed}")
 
+        if keyword not in ALLOWED_KEYWORDS:
+            print(f'Unknown keyword: "{keyword}"')
+            return None
 
     songs = music_library.get(keyword, [])
-    if not songs:
-        print(f'No songs found for "{keyword}" in {LIBRARY_PATH}.')
-        return None
 
-    
+    if not songs:
+        print(f'No songs found for "{keyword}".')
+        return None
 
     song_name = random.choice(songs)
 
-    # Passing the song as an osascript argument avoids quote-escaping issues.
-    script = f'''
+    script = '''
     on run argv
         set songName to item 1 of argv
 
         tell application "Music"
-             if player state is playing then
-                return "ALREADY_PLAYING"
-            end if
-
             if not (exists playlist "collab") then
                 return "PLAYLIST_NOT_FOUND"
             end if
+
             set matchingTracks to (every track of playlist "collab" whose name is songName)
 
             if (count of matchingTracks) is 0 then
                 return "NOT_FOUND"
             end if
 
-            set targetTrack to item 1 of matchingTracks
-            play targetTrack
+            play (item 1 of matchingTracks)
             return "PLAYING"
         end tell
     end run
     '''
+
     result = subprocess.run(
         ["osascript", "-e", script, "--", song_name],
         capture_output=True,
         text=True,
     )
 
+    status = result.stdout.strip()
+
     if result.returncode != 0:
         print("Apple Music error:", result.stderr.strip())
         return None
 
-    if result.stdout.strip() == "ALREADY_PLAYING":
-        print("A song is already playing in Apple Music; leaving it unchanged.")
+    if status == "PLAYLIST_NOT_FOUND":
+        print('Apple Music playlist "collab" was not found.')
         return None
 
-    if result.stdout.strip() == "NOT_FOUND":
-        print(f'Apple Music could not find "{song_name}" in your "collab" library.')
+    if status == "NOT_FOUND":
+        print(f'"{song_name}" was not found in "collab".')
         return None
 
-    print(f'Playing "{song_name}" from the "{keyword}" group.')
+    print(f'Playing "{song_name}" from "{keyword}".')
     return song_name
 
 
 def main():
-    """Check Chrome every two seconds and play on each detected URL change."""
     previous_url = None
     print("Monitoring Chrome. Press Control+C to stop.")
+
     try:
         while True:
             current_url, category = get_current_chrome_context()
-            if current_url != previous_url:
+
+            # Runs on every URL change, even if the category stays the same.
+            if current_url and current_url != previous_url:
                 previous_url = current_url
-                print(f"Current category: {category}")
+                print(f"Chrome changed: {current_url}")
+                print(f"Category: {category}")
                 play_song_for_keyword(category)
+
             time.sleep(2)
+
     except KeyboardInterrupt:
-        pass
+        print("\nStopped monitoring.")
+
 
 if __name__ == "__main__":
-
+    main()
