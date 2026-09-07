@@ -1,5 +1,6 @@
 import subprocess
 import time
+from urllib.parse import urlparse
 
 
 def get_chrome_url():
@@ -25,6 +26,14 @@ def get_chrome_url():
     return result.stdout.strip()
 
 
+def url_to_keyword(url):
+    netloc = urlparse(url).netloc.lower()   # 'mail.google.com'
+    labels = netloc.split(".")
+    if labels and labels[0] == "www":
+        labels = labels[1:]
+    return labels[0] if labels else None    # 'mail'
+
+
 previous_url = None
 
 print("Monitoring Chrome. Press Control+C to stop.")
@@ -33,7 +42,8 @@ while True:
     current_url = get_chrome_url()
 
     if current_url and current_url != previous_url:
-        print("Chrome URL changed:", current_url)
+        keyword = url_to_keyword(current_url)
+        print("Chrome URL changed:", current_url, "->", keyword)
         previous_url = current_url
 
     time.sleep(2)

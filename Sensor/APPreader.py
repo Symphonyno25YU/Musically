@@ -24,3 +24,4 @@ while True:
     app = get_frontmost_app()
     print("当前前台:", app)
     time.sleep(5)   # 5 秒检测一次
+
