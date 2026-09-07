@@ -68,28 +68,28 @@ def get_category(keyword):
     keyword = normalize_name(keyword)
     return website_categories.get(keyword)
 
+def get_current_chrome_context():
+    """Return (URL, activity category) for the active Chrome tab."""
+    current_url = get_chrome_url()
+    if not current_url:
+        return None, None
+    keyword = url_to_keyword(current_url)
+    return current_url, get_category(keyword)
 
-previous_url = None
-current_category = None
 
-try:
-    while True:
-        current_url = get_chrome_url()
+def main():
+    """Optional standalone Chrome test; importing this module does not loop."""
+    previous_url = None
+    try:
+        while True:
+            current_url, category = get_current_chrome_context()
+            if current_url != previous_url:
+                previous_url = current_url
+                print(f"{current_url} → {category}")
+            time.sleep(2)
+    except KeyboardInterrupt:
+        pass
 
-        if current_url != previous_url:
-            keyword = (
-                url_to_keyword(current_url)
-                if current_url
-                else None
-            )
 
-            current_category = get_category(keyword)
-            previous_url = current_url
-
-            # Optional terminal output for testing.
-            print(f"{keyword} → {current_category}")
-
-        time.sleep(2)
-
-except KeyboardInterrupt:
-    pass
+if __name__ == "__main__":
+    main()

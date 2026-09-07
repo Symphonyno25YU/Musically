@@ -1,8 +1,11 @@
 import json
 import random
 import subprocess
+import time
 from pathlib import Path
 
+from test_chrome_url import get_current_chrome_context, url_to_keyword
+from pathlib import Path
 
 LIBRARY_PATH = Path(__file__).parent / "library" / "music_genre.json"
 
@@ -111,5 +114,20 @@ def play_song_for_keyword(keyword):
     return song_name
 
 
+def main():
+    """Check Chrome every two seconds and play on each detected URL change."""
+    previous_url = None
+    print("Monitoring Chrome. Press Control+C to stop.")
+    try:
+        while True:
+            current_url, category = get_current_chrome_context()
+            if current_url != previous_url:
+                previous_url = current_url
+                print(f"Current category: {category}")
+                play_song_for_keyword(category)
+            time.sleep(2)
+    except KeyboardInterrupt:
+        pass
+
 if __name__ == "__main__":
-    
+    main()
