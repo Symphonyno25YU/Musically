@@ -1,123 +1,222 @@
+"""Choose music for the current context when the playing track finishes."""
+
+import argparse
 import json
 import random
 import subprocess
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
-from test_chrome_url import get_current_chrome_context
+from context_reader import get_current_context
+from Sync_library import CATEGORIES, sync_playlist_library
 
 
 LIBRARY_PATH = Path(__file__).resolve().parent / "library" / "music_genre.json"
-
-ALLOWED_KEYWORDS = {
-    "workstudy",
-    "creativity",
-    "deepthinking",
-    "relaxation",
-    "intense",
+ALLOWED_KEYWORDS = set(CATEGORIES)
+CATEGORY_ALIASES = {
+    "creative": "creativity",
+    "relax": "relaxation",
+    "deep_thinking": "deepthinking",
 }
 
-    
-# Given the KeyWords(The Scene), automatically play a song the that library. 
-def play_song_for_keyword(keyword=None):
-    """Choose and play a song from the matching collab playlist category."""
+
+@dataclass(frozen=True)
+class PlaybackSelection:
+    title: str
+    track_id: str
+    category: str
+
+
+@dataclass(frozen=True)
+class PlayerSnapshot:
+    state: str
+    track_id: str = ""
+    title: str = ""
+
+
+def _choose_category(keyword, music_library):
+    normalized = keyword.strip().casefold() if isinstance(keyword, str) else ""
+    normalized = CATEGORY_ALIASES.get(normalized, normalized)
+    if normalized in ALLOWED_KEYWORDS and music_library.get(normalized):
+        return normalized
+
+    available = [name for name in CATEGORIES if music_library.get(name)]
+    return random.choice(available) if available else None
+
+
+def start_song_for_keyword(keyword, playlist_name):
+    """Choose a categorized song and start it in ``playlist_name``."""
+    if not isinstance(playlist_name, str) or not playlist_name.strip():
+        raise ValueError("playlist_name must be a non-empty string")
 
     with LIBRARY_PATH.open(encoding="utf-8") as file:
         music_library = json.load(file)
 
-    # None or "none" means choose a random category.
-    if keyword is None or (
-        isinstance(keyword, str) and keyword.strip().casefold() == "none"
-    ):
-        available_keywords = [
-            name for name, songs in music_library.items() if songs
-        ]
-
-        if not available_keywords:
-            print("No non-empty categories found.")
-            return None
-
-        keyword = random.choice(available_keywords)
-    else:
-        keyword = keyword.strip().casefold()
-
-        if keyword not in ALLOWED_KEYWORDS:
-            print(f'Unknown keyword: "{keyword}"')
-            return None
-
-    songs = music_library.get(keyword, [])
-
-    if not songs:
-        print(f'No songs found for "{keyword}".')
+    category = _choose_category(keyword, music_library)
+    if category is None:
+        print("No songs were found in the five activity categories.")
         return None
 
-    song_name = random.choice(songs)
-
+    song_name = random.choice(music_library[category])
     script = '''
     on run argv
         set songName to item 1 of argv
-
+        set playlistName to item 2 of argv
         tell application "Music"
-            if not (exists playlist "collab") then
+            if not (exists playlist playlistName) then
                 return "PLAYLIST_NOT_FOUND"
             end if
-
-            set matchingTracks to (every track of playlist "collab" whose name is songName)
-
+            set matchingTracks to (every track of playlist playlistName whose name is songName)
             if (count of matchingTracks) is 0 then
-                return "NOT_FOUND"
+                return "TRACK_NOT_FOUND"
             end if
-
-            play (item 1 of matchingTracks)
-            return "PLAYING"
+            set selectedTrack to item 1 of matchingTracks
+            play selectedTrack
+            set trackID to ""
+            try
+                set trackID to persistent ID of selectedTrack as text
+            end try
+            return "PLAYING" & tab & trackID & tab & (name of selectedTrack as text)
         end tell
     end run
     '''
-
     result = subprocess.run(
-        ["osascript", "-e", script, "--", song_name],
+        ["osascript", "-e", script, "--", song_name, playlist_name.strip()],
         capture_output=True,
         text=True,
     )
-
-    status = result.stdout.strip()
 
     if result.returncode != 0:
         print("Apple Music error:", result.stderr.strip())
         return None
 
+    fields = result.stdout.strip().split("\t", 2)
+    status = fields[0]
     if status == "PLAYLIST_NOT_FOUND":
-        print('Apple Music playlist "collab" was not found.')
+        print(f'Apple Music playlist "{playlist_name}" was not found.')
+        return None
+    if status == "TRACK_NOT_FOUND":
+        print(f'"{song_name}" was not found in "{playlist_name}".')
+        return None
+    if status != "PLAYING":
+        print("Apple Music returned an unexpected response:", result.stdout.strip())
         return None
 
-    if status == "NOT_FOUND":
-        print(f'"{song_name}" was not found in "collab".')
-        return None
-
-    print(f'Playing "{song_name}" from "{keyword}".')
-    return song_name
+    track_id = fields[1] if len(fields) > 1 else ""
+    title = fields[2] if len(fields) > 2 else song_name
+    print(f'Playing "{title}" from "{category}" in "{playlist_name}".')
+    return PlaybackSelection(title=title, track_id=track_id, category=category)
 
 
-def main():
+def play_song_for_keyword(keyword=None, playlist_name="collab"):
+    """Backward-compatible playback helper that returns the selected title."""
+    selection = start_song_for_keyword(keyword, playlist_name)
+    return selection.title if selection else None
 
-    previous_url = None
-    print("Monitoring Chrome. Press Control+C to stop.")
+
+def get_player_snapshot():
+    """Return Apple Music's current state and track identity."""
+    script = '''
+    tell application "Music"
+        set stateText to player state as text
+        if stateText is "stopped" then return stateText
+        set trackID to ""
+        set trackName to ""
+        try
+            set trackID to persistent ID of current track as text
+            set trackName to name of current track as text
+        end try
+        return stateText & tab & trackID & tab & trackName
+    end tell
+    '''
+    result = subprocess.run(
+        ["osascript", "-e", script],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return PlayerSnapshot("unknown")
+
+    fields = result.stdout.strip().split("\t", 2)
+    return PlayerSnapshot(
+        state=fields[0].casefold() if fields and fields[0] else "unknown",
+        track_id=fields[1] if len(fields) > 1 else "",
+        title=fields[2] if len(fields) > 2 else "",
+    )
+
+
+def track_finished(selection, previous_snapshot, current_snapshot):
+    """Return whether the selected song ended since the previous poll.
+
+    A tab or application change is intentionally absent from this decision.
+    Music may either stop or auto-advance at the end, so both transitions are
+    treated as completion. Pausing is not.
+    """
+    if previous_snapshot.state == "playing" and current_snapshot.state == "stopped":
+        return True
+
+    if selection.track_id and current_snapshot.track_id:
+        selected_key = selection.track_id
+        current_key = current_snapshot.track_id
+    else:
+        selected_key = selection.title
+        current_key = current_snapshot.title
+    return bool(
+        previous_snapshot.state == "playing"
+        and current_snapshot.state == "playing"
+        and selected_key
+        and current_key
+        and current_key != selected_key
+    )
+
+
+def _start_for_current_context(playlist_name):
+    description, category = get_current_context()
+    print(f"Current context: {description or 'unknown'} -> {category or 'random'}")
+    return start_song_for_keyword(category, playlist_name)
+
+
+def run_player(playlist_name, poll_seconds=1.0):
+    """Run context-aware playback for a playlist supplied by the frontend."""
+    sync_playlist_library(playlist_name)
+    selection = _start_for_current_context(playlist_name)
+    if selection is None:
+        return
+
+    previous_snapshot = PlayerSnapshot(
+        state="playing",
+        track_id=selection.track_id,
+        title=selection.title,
+    )
+    print("Monitoring song completion. Press Control+C to stop.")
 
     try:
         while True:
-            current_url, category = get_current_chrome_context()
-
-            # Runs on every URL change, even if the category stays the same.
-            if current_url and current_url != previous_url:
-                previous_url = current_url
-                print(f"Chrome changed: {current_url}")
-                print(f"Category: {category}")
-                play_song_for_keyword(category)
-
-            time.sleep(2)
-
+            time.sleep(poll_seconds)
+            current_snapshot = get_player_snapshot()
+            if track_finished(selection, previous_snapshot, current_snapshot):
+                # This is the only place the changing tab/app is read after
+                # startup, so changing context cannot interrupt a song.
+                next_selection = _start_for_current_context(playlist_name)
+                if next_selection is not None:
+                    selection = next_selection
+                    current_snapshot = PlayerSnapshot(
+                        state="playing",
+                        track_id=selection.track_id,
+                        title=selection.title,
+                    )
+            previous_snapshot = current_snapshot
     except KeyboardInterrupt:
         print("\nStopped monitoring.")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("playlist", help="Apple Music playlist name received from the frontend")
+    parser.add_argument("--poll-seconds", type=float, default=1.0)
+    args = parser.parse_args()
+    run_player(args.playlist, max(0.1, args.poll_seconds))
 
 
 if __name__ == "__main__":

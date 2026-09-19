@@ -16,7 +16,7 @@
       "song_set_key": "intense_songs",
       "playback": "random"
     },
-    "deep_thinking": {
+    "deepthinking": {
       "display_name": "deep thinking",
       "song_set_key": "deep_thinking_songs",
       "playback": "random"
@@ -84,8 +84,8 @@
   "music_library_source": {
     "application": "Music",
     "access_method": "AppleScript",
-    "source_playlist": "collab",
-    "track_collection_expression": "tracks of playlist collab",
+    "source_playlist": "frontend_provided_playlist_name",
+    "track_collection_expression": "tracks of playlist <frontend_provided_playlist_name>",
     "track_properties": {
       "song_id": "persistent ID",
       "song_name": "name",
@@ -96,8 +96,8 @@
   },
   
   "song_assignment_policy": {
-    "source_song_set": "all_songs",
-    "source_playlist": "collab",
+    "source_song_set": "five_activity_categories",
+    "source_playlist": "frontend_provided_playlist_name",
     "genre_input": "genre of Apple Music track",
     "genre_input_type": "string",
     "genre_matching": "case_insensitive_exact_name",

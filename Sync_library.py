@@ -1,5 +1,6 @@
-"""Synchronize Apple Music's `collab` playlist with music_genre.json."""
+"""Build the five activity song groups from any Apple Music playlist."""
 
+import argparse
 import json
 import re
 import subprocess
@@ -7,68 +8,99 @@ import time
 from pathlib import Path
 
 
+LIBRARY_PATH = Path(__file__).resolve().parent / "library" / "music_genre.json"
+CATEGORIES = (
+    "workstudy",
+    "creativity",
+    "deepthinking",
+    "relaxation",
+    "intense",
+)
+
+# Apple Music genres are free-form. These terms provide a deterministic,
+# editable mapping into the application's five activity categories.
+GENRE_CATEGORY_TERMS = {
+    "workstudy": (
+        "classical", "instrumental", "piano", "soundtrack", "score",
+        "new age", "study",
+    ),
+    "creativity": (
+        "pop", "k-pop", "kpop", "dance", "electronic", "indie",
+        "experimental", "world",
+    ),
+    "deepthinking": (
+        "alternative", "r&b", "rnb", "soul", "blues", "downtempo",
+        "jazz",
+    ),
+    "relaxation": (
+        "acoustic", "folk", "country", "ambient", "easy listening",
+        "singer/songwriter", "reggae", "chill",
+    ),
+    "intense": (
+        "rock", "metal", "punk", "hip-hop", "hip hop", "hiphop", "rap",
+        "trap", "hardcore",
+    ),
+}
 
 
-LIBRARY_PATH = Path(__file__).parent / "library" / "music_genre.json"
-PLAYLIST_NAME = "collab"
+def _normalized_genre(genre):
+    return " ".join((genre or "").casefold().split())
+
+
+def genre_to_categories(genre):
+    """Return every activity category matched by an Apple Music genre.
+
+    Commas and semicolons may separate multiple genres. A slash remains part
+    of a genre (for example, ``Hip-Hop/Rap``), matching music_rules.json.
+    Unrecognized genres are kept in relaxation so every playlist track is
+    available to the application.
+    """
+    parts = [part.strip() for part in re.split(r"[;,]", _normalized_genre(genre))]
+    matches = []
+    for part in parts:
+        for category in CATEGORIES:
+            if any(term in part for term in GENRE_CATEGORY_TERMS[category]):
+                if category not in matches:
+                    matches.append(category)
+    return matches or ["relaxation"]
 
 
 def genre_to_keyword(genre):
-    """Reduce an Apple Music genre to the library's main genre keyword.
-
-    Examples:
-        "Chinese Hip-Hop" -> "hiphop"
-        "Hip-Hop/Rap"     -> "hiphop"
-        "Classical Crossover" -> "classical"
-    """
-    raw = " ".join(genre.casefold().split())
-    compact = re.sub(r"[^a-z0-9]+", "", raw)
-
-    if "hiphop" in compact or re.search(r"\brap\b", raw):
-        return "hiphop"
-    if re.search(r"r\s*&\s*b", raw) or "rnb" in compact or "soul" in compact:
-        return "rnb"
-    if "kpop" in compact:
-        return "kpop"
-    if "classical" in compact:
-        return "classical"
-    if "alternative" in compact:
-        return "alternative"
-    if "rock" in compact:
-        return "rock"
-    if "pop" in compact:
-        return "pop"
-    if "soundtrack" in compact:
-        return "soundtrack"
-    if "downtempo" in compact:
-        return "downtempo"
-    if "dance" in compact:
-        return "dance"
-
-    # Keep an unfamiliar genre rather than discarding the song.
-    return compact or "unknown"
+    """Backward-compatible single-category genre helper."""
+    return genre_to_categories(genre)[0]
 
 
-def get_collab_tracks():
-    """Return (song_title, Apple Music genre) pairs from the collab playlist."""
-    script = f'''
-    tell application "Music"
-        set output to ""
-        repeat with t in tracks of playlist "{PLAYLIST_NAME}"
-            set output to output & (name of t as text) & tab & (genre of t as text) & linefeed
-        end repeat
-        return output
-    end tell
+def get_playlist_tracks(playlist_name):
+    """Return ``(title, genre)`` pairs from an Apple Music playlist."""
+    if not isinstance(playlist_name, str) or not playlist_name.strip():
+        raise ValueError("playlist_name must be a non-empty string")
+
+    script = '''
+    on run argv
+        set playlistName to item 1 of argv
+        tell application "Music"
+            if not (exists playlist playlistName) then
+                return "PLAYLIST_NOT_FOUND"
+            end if
+            set output to ""
+            repeat with t in tracks of playlist playlistName
+                set output to output & (name of t as text) & tab & (genre of t as text) & linefeed
+            end repeat
+            return output
+        end tell
+    end run
     '''
     result = subprocess.run(
-        ["osascript", "-e", script],
+        ["osascript", "-e", script, "--", playlist_name.strip()],
         capture_output=True,
         text=True,
     )
 
     if result.returncode != 0:
-        message = result.stderr.strip() or "Unable to read the collab playlist."
+        message = result.stderr.strip() or f'Unable to read playlist "{playlist_name}".'
         raise RuntimeError(message)
+    if result.stdout.strip() == "PLAYLIST_NOT_FOUND":
+        raise ValueError(f'Apple Music playlist "{playlist_name}" was not found.')
 
     tracks = []
     for line in result.stdout.splitlines():
@@ -78,57 +110,61 @@ def get_collab_tracks():
     return tracks
 
 
-def normalize_library(library):
-    """Merge existing detailed genre groups into the main-keyword groups."""
-    normalized = {}
+def get_collab_tracks():
+    """Backward-compatible wrapper for the original fixed playlist."""
+    return get_playlist_tracks("collab")
 
-    for genre, songs in library.items():
-        keyword = genre_to_keyword(genre)
-        normalized.setdefault(keyword, [])
 
-        for song in songs:
-            if song not in normalized[keyword]:
-                normalized[keyword].append(song)
+def build_library(tracks):
+    """Classify all tracks into the application's five categories."""
+    library = {category: [] for category in CATEGORIES}
+    for title, genre in tracks:
+        for category in genre_to_categories(genre):
+            if title not in library[category]:
+                library[category].append(title)
+    return library
 
-    return normalized
+
+def sync_playlist_library(playlist_name):
+    """Replace the local category index with data from ``playlist_name``."""
+    library = build_library(get_playlist_tracks(playlist_name))
+    with LIBRARY_PATH.open("w", encoding="utf-8") as file:
+        json.dump(library, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+    return library
 
 
 def sync_collab_library():
-    """Add any songs in `collab` that are not already in the JSON library."""
-    with LIBRARY_PATH.open(encoding="utf-8") as file:
-        original_library = json.load(file)
-
-    library = normalize_library(original_library)
-    added = []
-
-    for title, genre in get_collab_tracks():
-        keyword = genre_to_keyword(genre)
-        songs = library.setdefault(keyword, [])
-
-        if title not in songs:
-            songs.append(title)
-            added.append((title, keyword))
-
-    if library != original_library:
-        with LIBRARY_PATH.open("w", encoding="utf-8") as file:
-            json.dump(library, file, ensure_ascii=False, indent=2)
-            file.write("\n")
-
-    return added
+    """Backward-compatible wrapper for callers using ``collab``."""
+    return sync_playlist_library("collab")
 
 
-def watch_collab_playlist(interval_seconds=5):
-    """Continuously check for songs newly added to the collab playlist."""
-    print(f'Watching Apple Music playlist "{PLAYLIST_NAME}". Press Control+C to stop.')
-
+def watch_playlist(playlist_name, interval_seconds=5):
+    """Refresh the local category index when the playlist changes."""
+    print(f'Watching Apple Music playlist "{playlist_name}". Press Control+C to stop.')
+    previous = None
     try:
         while True:
-            for title, keyword in sync_collab_library():
-                print(f'Added "{title}" to the "{keyword}" set.')
+            library = sync_playlist_library(playlist_name)
+            if library != previous:
+                count = len({song for songs in library.values() for song in songs})
+                print(f"Indexed {count} tracks into five categories.")
+                previous = library
             time.sleep(interval_seconds)
     except KeyboardInterrupt:
         print("\nStopped watching.")
 
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("playlist", help="Apple Music playlist name from the frontend")
+    parser.add_argument("--watch", action="store_true", help="keep the index synchronized")
+    args = parser.parse_args()
+    if args.watch:
+        watch_playlist(args.playlist)
+    else:
+        sync_playlist_library(args.playlist)
+
+
 if __name__ == "__main__":
-    watch_collab_playlist()
+    main()

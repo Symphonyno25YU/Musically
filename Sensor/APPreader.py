@@ -1,27 +1,38 @@
 #!/usr/bin/env python3
+"""Read the macOS foreground application without changing playback."""
+
 import subprocess
 import time
 
+
 def get_frontmost_app():
-    """读取当前前台(正在使用)的 app 名字,返回一个字符串。"""
-    script = 'tell application "System Events" to get name of first application process whose frontmost is true'
+    """Return the name of the foreground macOS application."""
+    script = (
+        'tell application "System Events" to get name of first application '
+        "process whose frontmost is true"
+    )
     result = subprocess.run(
-        ['osascript', '-e', script],
+        ["osascript", "-e", script],
         capture_output=True,
-        text=True
+        text=True,
     )
 
     if result.returncode != 0:
-        print("出错了,可能是还没授权'辅助功能'权限。")
-        print("系统给的错误信息:", result.stderr.strip())
         return None
 
-    return result.stdout.strip()
+    return result.stdout.strip() or None
 
-# ---- 每 5 秒检测一次前台 app ----
-print("开始监测前台 app,切换窗口试试,按 Control+C 停止:")
-while True:
-    app = get_frontmost_app()
-    print("当前前台:", app)
-    time.sleep(5)   # 5 秒检测一次
 
+def main():
+    """Print the foreground app every five seconds for manual testing."""
+    print("Monitoring the foreground app. Press Control+C to stop.")
+    try:
+        while True:
+            print("Foreground app:", get_frontmost_app())
+            time.sleep(5)
+    except KeyboardInterrupt:
+        print("\nStopped monitoring.")
+
+
+if __name__ == "__main__":
+    main()
