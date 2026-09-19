@@ -1,3 +1,4 @@
+
 # Music Switcher
 
 Music Switcher selects Apple Music tracks for what you are doing on your Mac.
@@ -31,4 +32,5 @@ Playlist names are passed to Apple Music as arguments rather than inserted
 into AppleScript, so names containing quotes and other punctuation are safe.
 
 macOS may ask for Automation permission to control Music and Accessibility
-permission to read the foreground application.
+
+
