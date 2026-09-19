@@ -17,7 +17,8 @@ ALLOWED_KEYWORDS = {
     "intense",
 }
 
-
+    
+# Given the KeyWords(The Scene), automatically play a song the that library. 
 def play_song_for_keyword(keyword=None):
     """Choose and play a song from the matching collab playlist category."""
 
@@ -98,6 +99,7 @@ def play_song_for_keyword(keyword=None):
 
 
 def main():
+
     previous_url = None
     print("Monitoring Chrome. Press Control+C to stop.")
 
