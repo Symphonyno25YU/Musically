@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from Sensor.APPreader import get_frontmost_app
-from test_chrome_url import get_current_chrome_context, normalize_name
+from Sensor.test_chrome_url import get_current_chrome_context, normalize_name
 
 
 RULES_PATH = Path(__file__).resolve().parent / "library" / "music_rules.json"

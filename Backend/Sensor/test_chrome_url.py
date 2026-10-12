@@ -9,7 +9,7 @@ def normalize_name(name):
     # Ignore capitalization and normalize extra whitespace.
     return " ".join(name.split()).casefold()
 
-JSON_PATH = Path(__file__).resolve().parent / "library" / "music_rules.json"
+JSON_PATH = Path(__file__).resolve().parent.parent / "library" / "music_rules.json"
 with open(JSON_PATH, "r", encoding="utf-8") as file:
     config = json.load(file)
 
