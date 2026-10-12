@@ -1,18 +1,16 @@
 """Choose music for the current context when the playing track finishes."""
 
 import argparse
-import json
 import random
 import subprocess
 import time
 from dataclasses import dataclass
-from pathlib import Path
 
 from context_reader import get_current_context
+from database import load_music_library
 from Sync_library import CATEGORIES, sync_playlist_library
 
 
-LIBRARY_PATH = Path(__file__).resolve().parent / "library" / "music_genre.json"
 ALLOWED_KEYWORDS = set(CATEGORIES)
 CATEGORY_ALIASES = {
     "creative": "creativity",
@@ -70,8 +68,7 @@ def start_song_for_keyword(keyword, playlist_name):
     if not isinstance(playlist_name, str) or not playlist_name.strip():
         raise ValueError("playlist_name must be a non-empty string")
 
-    with LIBRARY_PATH.open(encoding="utf-8") as file:
-        music_library = json.load(file)
+    music_library = load_music_library()
 
     category = _choose_category(keyword, music_library)
     if category is None:

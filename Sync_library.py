@@ -1,21 +1,11 @@
 """Build the five activity song groups from any Apple Music playlist."""
 
 import argparse
-import json
 import re
 import subprocess
 import time
-from pathlib import Path
 
-
-LIBRARY_PATH = Path(__file__).resolve().parent / "library" / "music_genre.json"
-CATEGORIES = (
-    "workstudy",
-    "creativity",
-    "deepthinking",
-    "relaxation",
-    "intense",
-)
+from database import CATEGORIES, replace_music_library
 
 # Apple Music genres are free-form. These terms provide a deterministic,
 # editable mapping into the application's five activity categories.
@@ -126,11 +116,9 @@ def build_library(tracks):
 
 
 def sync_playlist_library(playlist_name):
-    """Replace the local category index with data from ``playlist_name``."""
+    """Replace the SQLite category index with data from ``playlist_name``."""
     library = build_library(get_playlist_tracks(playlist_name))
-    with LIBRARY_PATH.open("w", encoding="utf-8") as file:
-        json.dump(library, file, ensure_ascii=False, indent=2)
-        file.write("\n")
+    replace_music_library(library)
     return library
 
 

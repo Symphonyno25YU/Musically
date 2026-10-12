@@ -1,8 +1,11 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
 import Sync_library
 import context_reader
+import database
 import playMusicofGenre as player
 
 
@@ -29,6 +32,21 @@ class LibraryTests(unittest.TestCase):
 
         self.assertEqual(tracks, [("Song", "Pop")])
         self.assertEqual(run.call_args.args[0][-1], 'happy "mix"')
+
+
+class DatabaseTests(unittest.TestCase):
+    def test_library_round_trip_uses_sqlite(self):
+        library = {category: [] for category in database.CATEGORIES}
+        library["workstudy"] = ["Focus"]
+        library["intense"] = ["Energy"]
+
+        with TemporaryDirectory() as directory:
+            database_path = Path(directory) / "music_genre.db"
+            with patch.object(database, "DATABASE_PATH", database_path):
+                database.replace_music_library(library)
+                saved_library = database.load_music_library()
+
+        self.assertEqual(saved_library, library)
 
 
 class ContextTests(unittest.TestCase):
