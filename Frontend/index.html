@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Switcher</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Frontend Template</p>
+        <h1>Music Switcher</h1>
+      </div>
+
+      <nav class="app-nav" aria-label="Primary navigation">
+        <a href="#player">Player</a>
+        <a href="#playlist">Playlist</a>
+        <a href="#settings">Settings</a>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <section id="player" class="card player-card">
+        <div class="album-art" aria-hidden="true">
+          <span>♪</span>
+        </div>
+
+        <div class="track-details">
+          <p class="eyebrow">Now Playing</p>
+          <h2 id="track-title">No song selected</h2>
+          <p id="track-artist">Choose a track to begin</p>
+        </div>
+
+        <div class="progress-area">
+          <div class="time-row">
+            <span id="current-time">0:00</span>
+            <span id="duration">0:00</span>
+          </div>
+          <div class="progress-bar" aria-label="Song progress">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <div class="controls" aria-label="Music controls">
+          <button id="previous-btn" class="icon-button" type="button" aria-label="Previous track">⏮</button>
+          <button id="play-btn" class="primary-button" type="button">Play</button>
+          <button id="next-btn" class="icon-button" type="button" aria-label="Next track">⏭</button>
+        </div>
+      </section>
+
+      <aside id="playlist" class="card playlist-card">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Queue</p>
+            <h2>Playlist</h2>
+          </div>
+          <button id="shuffle-btn" class="secondary-button" type="button">Shuffle</button>
+        </div>
+
+        <ul id="track-list" class="track-list" aria-label="Available tracks"></ul>
+      </aside>
+
+      <section id="settings" class="card settings-card">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Customize</p>
+            <h2>Settings</h2>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Volume</span>
+          <input id="volume-control" type="range" min="0" max="100" value="75" />
+        </label>
+
+        <label class="field checkbox-field">
+          <input id="auto-switch" type="checkbox" checked />
+          <span>Auto switch to next track</span>
+        </label>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

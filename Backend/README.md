@@ -1,6 +1,16 @@
 
 # Music Switcher
 
+## Description
+
+The backend is a macOS Python service that connects the Music Switcher
+frontend with Apple Music. It reads the user's active context from the
+foreground application or the current Chrome tab, maps that context to one of
+five activity categories, and selects matching songs from a local Apple Music
+playlist index. The playlist index is built from Apple Music track metadata and
+stored in SQLite so playback can quickly choose songs for work/study,
+creativity, deep thinking, relaxation, or intense activities.
+
 Music Switcher selects Apple Music tracks for what you are doing on your Mac.
 It supports five activity categories: work/study, creativity, deep thinking,
 relaxation, and intense.
