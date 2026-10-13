@@ -17,14 +17,14 @@ CATEGORIES = (
 
 
 def get_connection():
-    """Open the local Music Switcher SQLite database."""
+    # Open the local Music Switcher SQLite database.
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
     return connection
 
 
 def initialize_database():
-    """Create the database and its tracks table when they do not exist."""
+    # Create the database and its tracks table when they do not exist.
     DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as connection:
         connection.execute(
@@ -43,7 +43,7 @@ def initialize_database():
 
 
 def replace_music_library(music_library):
-    """Replace all saved category assignments with a newly synced library."""
+    # Replace all saved category assignments with a newly synced library.
     initialize_database()
     rows = [
         (title, category)
@@ -59,7 +59,7 @@ def replace_music_library(music_library):
 
 
 def load_music_library():
-    """Return SQLite track rows grouped into the five activity categories."""
+    # Return SQLite track rows grouped into the five activity categories.
     initialize_database()
     library = {category: [] for category in CATEGORIES}
     with get_connection() as connection:
