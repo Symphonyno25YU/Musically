@@ -1,4 +1,4 @@
-"""Choose music for the current context when the playing track finishes."""
+"""Prepare activity-matched music near the end of each playing track."""
 
 import argparse
 import random
@@ -23,6 +23,8 @@ WAITING_FOR_CONTEXT = object()
 SONG_POOLS = {}
 LAST_PLAYED = {}
 DEFAULT_POLL_SECONDS = 0.25
+PREPARE_SECONDS = 2.0
+HANDOFF_SECONDS = 0.75
 
 
 @dataclass(frozen=True) # make the instance immutable after creation.
@@ -41,6 +43,8 @@ class PlayerSnapshot:
     state: str
     track_id: str = ""
     title: str = ""
+    position: float = 0.0
+    duration: float = 0.0
 
 
 
@@ -97,7 +101,8 @@ def _choose_song(playlist_name, category, songs):
     return remaining.pop()
 
 
-def start_song_for_keyword(keyword, playlist_name):
+def prepare_song_for_keyword(keyword, playlist_name):
+    """Choose the next song without sending any playback commands."""
 
     if not isinstance(playlist_name, str) or not playlist_name.strip():
         raise ValueError("playlist_name must be a non-empty string")
@@ -111,10 +116,28 @@ def start_song_for_keyword(keyword, playlist_name):
 
     playlist_name = playlist_name.strip()
     song_name = _choose_song(playlist_name, category, music_library[category])
+    return PlaybackSelection(song_name, "", category)
+
+
+def start_song_for_keyword(keyword, playlist_name):
+    selection = prepare_song_for_keyword(keyword, playlist_name)
+    return play_prepared_song(selection, playlist_name) if selection else None
+
+
+def play_prepared_song(selection, playlist_name):
+    """Start the prepared choice, unless Music is now under manual control."""
+    song_name = selection.title
+    category = selection.category
     script = '''
     on run argv
         set songName to item 1 of argv
         set playlistName to item 2 of argv
+        tell application "System Events"
+            set foregroundName to name of first application process whose frontmost is true
+        end tell
+        if foregroundName is "Music" or foregroundName is "Apple Music" then
+            return "WAITING_FOR_CONTEXT"
+        end if
         tell application "Music"
             if not (exists playlist playlistName) then
                 return "PLAYLIST_NOT_FOUND"
@@ -145,6 +168,8 @@ def start_song_for_keyword(keyword, playlist_name):
 
     fields = result.stdout.strip().split("\t", 2)
     status = fields[0]
+    if status == "WAITING_FOR_CONTEXT":
+        return WAITING_FOR_CONTEXT
     if status == "PLAYLIST_NOT_FOUND":
         print(f'Apple Music playlist "{playlist_name}" was not found.')
         return None
@@ -172,39 +197,82 @@ def play_song_for_keyword(keyword=None, playlist_name="collab"):
     return selection.title if selection else None
 
 
-def get_player_snapshot():
+def get_player_snapshot(selection=None):
     """Return Apple Music's current playback state and current track identity.
 
     The returned PlayerSnapshot includes whether Music is playing, paused,
     stopped, or unknown, plus the current track's persistent ID and title when
     they are available.
     """
+    # Check and pause in the same AppleScript invocation: otherwise an unwanted
+    # queued track keeps playing throughout foreground-app/Chrome detection.
     script = '''
+    on run argv
+    set expectedID to item 1 of argv
+    set expectedName to item 2 of argv
     tell application "Music"
         set stateText to player state as text
         if stateText is "stopped" then return stateText
         set trackID to ""
         set trackName to ""
+        set positionSeconds to 0
+        set durationSeconds to 0
         try
             set trackID to persistent ID of current track as text
+        end try
+        try
             set trackName to name of current track as text
         end try
-        return stateText & tab & trackID & tab & trackName
+        try
+            set positionSeconds to player position
+        end try
+        try
+            set durationSeconds to duration of current track
+        end try
+        set unexpectedTrack to false
+        if expectedID is not "" and trackID is not "" then
+            set unexpectedTrack to trackID is not expectedID
+        else if expectedName is not "" and trackName is not "" then
+            set unexpectedTrack to trackName is not expectedName
+        end if
+        if stateText is "playing" and unexpectedTrack then
+            -- Do not interfere with manual control while Music is foreground.
+            tell application "System Events"
+                set foregroundName to name of first application process whose frontmost is true
+            end tell
+            if foregroundName is not "Music" and foregroundName is not "Apple Music" then
+                pause
+            end if
+        end if
+        -- Return the observed state, so the loop still detects the transition.
+        return stateText & tab & trackID & tab & trackName & tab & (positionSeconds as text) & tab & (durationSeconds as text)
     end tell
+    end run
     '''
     result = subprocess.run(
-        ["osascript", "-e", script],
+        [
+            "osascript", "-e", script, "--",
+            selection.track_id if selection else "",
+            selection.title if selection else "",
+        ],
         capture_output=True,
         text=True,
     )
     if result.returncode != 0:
         return PlayerSnapshot("unknown")
 
-    fields = result.stdout.strip().split("\t", 2)
+    fields = result.stdout.strip().split("\t")
+    try:
+        position = float(fields[3].replace(",", ".")) if len(fields) > 3 else 0.0
+        duration = float(fields[4].replace(",", ".")) if len(fields) > 4 else 0.0
+    except ValueError:
+        position, duration = 0.0, 0.0
     return PlayerSnapshot(
         state=fields[0].casefold() if fields and fields[0] else "unknown",
         track_id=fields[1] if len(fields) > 1 else "",
         title=fields[2] if len(fields) > 2 else "",
+        position=position,
+        duration=duration,
     )
 
 
@@ -233,7 +301,7 @@ def track_finished(selection, previous_snapshot, current_snapshot):
     )
 
 
-def _start_for_current_context(playlist_name):
+def _start_for_current_context(playlist_name, prepare_only=False):
     """Read the user's current context and start a matching song.
 
     The context reader decides what activity/category the user is currently in,
@@ -260,6 +328,8 @@ def _start_for_current_context(playlist_name):
 
     print(f"Current website: {description or 'unknown'}")
     print(f"{keyword or 'unknown'} -> {category or 'random'}")
+    if prepare_only:
+        return prepare_song_for_keyword(category, playlist_name)
     return start_song_for_keyword(category, playlist_name)
 
 
@@ -269,8 +339,8 @@ def run_player(playlist_name, poll_seconds=DEFAULT_POLL_SECONDS):
     First, this syncs the playlist into the local genre library. If the local
     Music Switcher browser page is active, it waits without playing anything
     until the user changes tabs or applications. It then starts a song based on
-    the current context. Each selected track plays once and stops, leaving
-    silence while the latest context is read and the next song is selected.
+    the current context. Prepare the next choice with two seconds remaining,
+    then hand off near the end instead of waiting for queue advancement.
     """
     sync_playlist_library(playlist_name)
     SONG_POOLS.clear()
@@ -293,15 +363,65 @@ def run_player(playlist_name, poll_seconds=DEFAULT_POLL_SECONDS):
         title=selection.title,
     )
     print("Monitoring song completion. Press Control+C to stop.")
+    prepared = None
+    timing_reported = False
+    timing_warning_reported = False
 
     try:
         while True:
             time.sleep(poll_seconds)
-            current_snapshot = get_player_snapshot()
-            if track_finished(selection, previous_snapshot, current_snapshot):
-                # This is the only place the changing tab/app is read after
-                # startup, so changing context cannot interrupt a song.
-                next_selection = _start_for_current_context(playlist_name)
+            snapshot_started = time.monotonic()
+            current_snapshot = get_player_snapshot(selection)
+            snapshot_latency = time.monotonic() - snapshot_started
+            finished = track_finished(selection, previous_snapshot, current_snapshot)
+            remaining = current_snapshot.duration - current_snapshot.position
+            timed_playback = (
+                not finished
+                and current_snapshot.state == "playing"
+                and current_snapshot.duration > 0
+                and current_snapshot.position >= 0
+            )
+            if timed_playback and not timing_reported:
+                print(
+                    f'Track timing: "{selection.title}" '
+                    f'{current_snapshot.position:.2f}/{current_snapshot.duration:.2f}s; '
+                    f'playback check {snapshot_latency:.2f}s.'
+                )
+                timing_reported = True
+            if (
+                not finished and current_snapshot.state == "playing"
+                and current_snapshot.duration <= 0 and not timing_warning_reported
+            ):
+                print("Warning: track duration unavailable; two-second preparation cannot run yet.")
+                timing_warning_reported = True
+            if timed_playback and remaining > PREPARE_SECONDS:
+                # A backward seek invalidates the activity sampled near the end.
+                prepared = None
+            if timed_playback and 0 <= remaining <= PREPARE_SECONDS and prepared is None:
+                print("Preparing next song: about two seconds remaining.")
+                prepared = _start_for_current_context(playlist_name, prepare_only=True)
+
+            handoff = (
+                timed_playback
+                # Allow for the next poll and automation overhead. A fixed
+                # 0.3-second window can fall entirely between playback checks.
+                and 0 <= remaining <= max(HANDOFF_SECONDS, poll_seconds + 2 * snapshot_latency)
+                and isinstance(prepared, PlaybackSelection)
+            )
+            if finished or handoff:
+                if handoff:
+                    print(f"Starting prepared song with {remaining:.2f}s reported remaining.")
+                if finished and current_snapshot.state == "playing":
+                    print(
+                        f'Unexpected track advance: "{selection.title}" -> '
+                        f'"{current_snapshot.title}". Resolving current activity.'
+                    )
+                # Reuse the activity sampled near the end. Only resolve it here
+                # if preparation was unavailable or automatic control was deferred.
+                if isinstance(prepared, PlaybackSelection):
+                    next_selection = play_prepared_song(prepared, playlist_name)
+                else:
+                    next_selection = _start_for_current_context(playlist_name)
                 while next_selection is WAITING_FOR_CONTEXT:
                     time.sleep(poll_seconds)
                     next_selection = _start_for_current_context(playlist_name)
@@ -310,6 +430,9 @@ def run_player(playlist_name, poll_seconds=DEFAULT_POLL_SECONDS):
                     return
                 if next_selection is not None:
                     selection = next_selection
+                    prepared = None
+                    timing_reported = False
+                    timing_warning_reported = False
                     current_snapshot = PlayerSnapshot(
                         state="playing",
                         track_id=selection.track_id,

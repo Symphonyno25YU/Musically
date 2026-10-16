@@ -11,13 +11,17 @@ relaxation, and intense.
 - Switching applications does **not** interrupt the current song.
 - While Apple Music is the foreground app, automatic song selection waits and
   leaves playback unchanged. It resumes selecting when another app is foreground.
-- Each selected song plays once and then stops, rather than letting Apple Music
-  play its next queued track. A short silent gap may occur during activity detection.
+- The monitor reads playback position and duration. With about two seconds left,
+  it samples the foreground app/Chrome tab and prepares a matching next song.
+- The prepared song starts with about 0.75 seconds remaining (or earlier if
+  measured automation latency requires a larger margin) to reduce the chance
+  of Apple Music advancing its own queue. This may trim the current song's ending;
+  polling and automation latency mean timing is approximate, not gapless.
 - Songs are drawn from a shuffled pool per category, so all songs get a turn
   before the pool resets. Immediate repeats are avoided when alternatives exist.
-- When the song ends, the program reads the currently active context. If
-  Chrome is active it checks the current tab; otherwise it checks the
-  foreground application. It then chooses the next song for that category.
+- The choice reflects activity sampled near the end, not subsequent changes in
+  the final two seconds. Seeking backward clears that prepared choice. If timing
+  metadata is unavailable, the monitor falls back to selecting after completion.
 
 ## Run the web app
 

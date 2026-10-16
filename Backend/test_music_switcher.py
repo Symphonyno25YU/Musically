@@ -124,6 +124,14 @@ class ChromeReaderTests(unittest.TestCase):
 
 
 class SongSelectionTests(unittest.TestCase):
+    @patch("playMusicofGenre.subprocess.run")
+    @patch("playMusicofGenre.load_music_library", return_value={"relaxation": ["Quiet"]})
+    def test_preparing_a_song_does_not_start_playback(self, _library, run):
+        prepared = player.prepare_song_for_keyword("relaxation", "mix")
+        self.assertEqual(prepared, player.PlaybackSelection("Quiet", "", "relaxation"))
+        run.assert_not_called()
+        self.assertNotIn("mix", player.LAST_PLAYED)
+
     def setUp(self):
         player.SONG_POOLS.clear()
         player.LAST_PLAYED.clear()
@@ -179,6 +187,125 @@ class SongSelectionTests(unittest.TestCase):
 
 
 class CompletionTests(unittest.TestCase):
+    @patch("playMusicofGenre.time.monotonic", side_effect=[0, 0.2, 1, 1.2])
+    @patch("playMusicofGenre.time.sleep", side_effect=[None, None, KeyboardInterrupt])
+    @patch("playMusicofGenre.get_player_snapshot")
+    @patch("playMusicofGenre.play_prepared_song")
+    @patch("playMusicofGenre._start_for_current_context")
+    @patch("playMusicofGenre.sync_playlist_library")
+    def test_handoff_does_not_require_hitting_old_point_three_second_window(
+        self, _sync, context, play, snapshot, _sleep, _clock
+    ):
+        first = player.PlaybackSelection("First", "id-1", "workstudy")
+        upcoming = player.PlaybackSelection("Next", "", "relaxation")
+        context.side_effect = [first, upcoming]
+        snapshot.side_effect = [
+            player.PlayerSnapshot("playing", "id-1", "First", 98.1, 100),
+            player.PlayerSnapshot("playing", "id-1", "First", 99.4, 100),
+        ]
+        play.return_value = player.PlaybackSelection("Next", "id-2", "relaxation")
+        player.run_player("mix")
+        play.assert_called_once_with(upcoming, "mix")
+
+    @patch("builtins.print")
+    @patch("playMusicofGenre.time.sleep", side_effect=[None, None, KeyboardInterrupt])
+    @patch("playMusicofGenre.get_player_snapshot")
+    @patch("playMusicofGenre._start_for_current_context")
+    @patch("playMusicofGenre.sync_playlist_library")
+    def test_missing_duration_is_reported_instead_of_silent_fallback(
+        self, _sync, context, snapshot, _sleep, output
+    ):
+        context.return_value = player.PlaybackSelection("First", "id-1", "workstudy")
+        snapshot.return_value = player.PlayerSnapshot("playing", "id-1", "First", 98, 0)
+        player.run_player("mix")
+        warnings = [call for call in output.call_args_list if "duration unavailable" in str(call)]
+        self.assertEqual(len(warnings), 1)
+        context.assert_called_once_with("mix")
+
+    @patch("playMusicofGenre.subprocess.run")
+    def test_snapshot_reads_position_and_duration(self, run):
+        run.return_value = Mock(returncode=0, stdout="playing\tid-1\tSong\t98.2\t100", stderr="")
+        snapshot = player.get_player_snapshot()
+        self.assertEqual(snapshot.position, 98.2)
+        self.assertEqual(snapshot.duration, 100.0)
+
+    @patch("playMusicofGenre.subprocess.run")
+    def test_prepared_playback_respects_music_foreground(self, run):
+        run.return_value = Mock(returncode=0, stdout="WAITING_FOR_CONTEXT", stderr="")
+        selection = player.PlaybackSelection("Song", "", "workstudy")
+        self.assertIs(player.play_prepared_song(selection, "mix"), player.WAITING_FOR_CONTEXT)
+        script = run.call_args.args[0][2]
+        self.assertLess(script.index('return "WAITING_FOR_CONTEXT"'), script.index('play selectedTrack'))
+
+    @patch("playMusicofGenre.time.sleep")
+    @patch("playMusicofGenre.get_player_snapshot")
+    @patch("playMusicofGenre.play_prepared_song")
+    @patch("playMusicofGenre._start_for_current_context")
+    @patch("playMusicofGenre.sync_playlist_library")
+    def test_prepares_two_seconds_before_end_without_starting_early(
+        self, _sync, context, play, snapshot, sleep
+    ):
+        first = player.PlaybackSelection("First", "id-1", "workstudy")
+        upcoming = player.PlaybackSelection("Next", "", "relaxation")
+        context.side_effect = [first, upcoming]
+        events = []
+        def read_snapshot(*_):
+            position = [97, 98, 99, 99.8][len(events)]
+            events.append(position)
+            if position < 99.8:
+                play.assert_not_called()
+            return player.PlayerSnapshot("playing", "id-1", "First", position, 100)
+        snapshot.side_effect = read_snapshot
+        play.return_value = player.PlaybackSelection("Next", "id-2", "relaxation")
+        sleep.side_effect = [None, None, None, None, KeyboardInterrupt]
+        player.run_player("mix")
+        self.assertEqual(context.call_count, 2)
+        context.assert_called_with("mix", prepare_only=True)
+        play.assert_called_once_with(upcoming, "mix")
+
+    @patch("playMusicofGenre.time.sleep")
+    @patch("playMusicofGenre.get_player_snapshot")
+    @patch("playMusicofGenre.play_prepared_song")
+    @patch("playMusicofGenre._start_for_current_context")
+    @patch("playMusicofGenre.sync_playlist_library")
+    def test_seek_back_discards_preparation_and_pause_does_not_handoff(
+        self, _sync, context, play, snapshot, sleep
+    ):
+        first = player.PlaybackSelection("First", "id-1", "workstudy")
+        upcoming = player.PlaybackSelection("Next", "", "relaxation")
+        context.side_effect = [first, upcoming, upcoming]
+        snapshot.side_effect = [
+            player.PlayerSnapshot("playing", "id-1", "First", 98, 100),
+            player.PlayerSnapshot("paused", "id-1", "First", 99.9, 100),
+            player.PlayerSnapshot("playing", "id-1", "First", 40, 100),
+            player.PlayerSnapshot("playing", "id-1", "First", 98, 100),
+        ]
+        sleep.side_effect = [None] * 4 + [KeyboardInterrupt]
+        player.run_player("mix")
+        self.assertEqual(context.call_count, 3)
+        play.assert_not_called()
+
+    @patch("playMusicofGenre.subprocess.run")
+    def test_snapshot_guards_unexpected_track_before_returning(self, run):
+        run.return_value = Mock(returncode=0, stdout="playing\tid-2\tQueued song", stderr="")
+        selection = player.PlaybackSelection("Selected", "id-1", "workstudy")
+
+        snapshot = player.get_player_snapshot(selection)
+
+        command = run.call_args.args[0]
+        self.assertEqual(command[-3:], ["--", "id-1", "Selected"])
+        script = command[2]
+        self.assertIn('if stateText is "playing" and unexpectedTrack then', script)
+        self.assertIn('foregroundName is not "Music"', script)
+        self.assertLess(script.index('\n                pause'), script.index('return stateText & tab'))
+        self.assertEqual(snapshot, player.PlayerSnapshot("playing", "id-2", "Queued song"))
+
+    @patch("playMusicofGenre.subprocess.run")
+    def test_snapshot_without_selection_remains_read_only(self, run):
+        run.return_value = Mock(returncode=0, stdout="paused\tid-1\tSelected", stderr="")
+        self.assertEqual(player.get_player_snapshot().state, "paused")
+        self.assertEqual(run.call_args.args[0][-2:], ["", ""])
+
     @patch("builtins.print")
     @patch("playMusicofGenre.start_song_for_keyword")
     @patch("playMusicofGenre.get_current_context")
@@ -287,7 +414,7 @@ class CompletionTests(unittest.TestCase):
         events = []
         context.side_effect = lambda: events.append("context") or ("Editor", "workstudy")
         start.side_effect = lambda *_: events.append("play") or self.selection
-        snapshot.side_effect = lambda: events.append("stopped") or player.PlayerSnapshot("stopped")
+        snapshot.side_effect = lambda *_: events.append("stopped") or player.PlayerSnapshot("stopped")
         sleep.side_effect = [None, KeyboardInterrupt]
 
         player.run_player("mix")
