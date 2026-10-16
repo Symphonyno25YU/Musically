@@ -37,4 +37,12 @@ In simple terms:
 
 ## Running the Frontend
 
-Open `index.html` in a web browser to view and test the Music Switcher frontend.
+From the project root, start the frontend and backend together:
+
+```sh
+cd /Users/symphonyno25/Desktop/Music_switcher
+python3 start_music_switcher.py
+```
+
+Open `http://127.0.0.1:5500` in a web browser. The frontend calls the local
+backend API at `http://127.0.0.1:8000` when you click **Play** or **Pause**.

@@ -6,7 +6,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 
-from context_reader import get_current_context
+from context_reader import get_current_context, is_apple_music_app, is_music_switcher_url
 from database import load_music_library
 from Sync_library import CATEGORIES, sync_playlist_library
 
@@ -17,6 +17,10 @@ CATEGORY_ALIASES = {
     "relax": "relaxation",
     "deep_thinking": "deepthinking",
 }
+WAITING_FOR_CONTEXT = object()
+SONG_POOLS = {}
+LAST_PLAYED = {}
+DEFAULT_POLL_SECONDS = 0.25
 
 
 @dataclass(frozen=True) # make the instance immutable after creation.
@@ -63,6 +67,34 @@ def _choose_category(keyword, music_library):
     that song from the requested playlist. It returns a PlaybackSelection when
     playback starts successfully, or None if something goes wrong.
     """
+def _choose_song(playlist_name, category, songs):
+    """Draw from a shuffled pool, exhausting it before repeating a song."""
+    key = (playlist_name, category)
+    songs = list(dict.fromkeys(songs))
+    signature = tuple(songs)
+    saved_signature, remaining = SONG_POOLS.get(key, (None, []))
+    if saved_signature != signature or not remaining:
+        remaining = songs.copy()
+        random.shuffle(remaining)
+        SONG_POOLS[key] = (signature, remaining)
+
+    # Also avoid a repeat across pool resets or overlapping categories.
+    last_song = LAST_PLAYED.get(playlist_name)
+    if len(songs) > 1 and remaining[-1] == last_song:
+        alternative = next(
+            (index for index, song in enumerate(remaining) if song != last_song),
+            None,
+        )
+        if alternative is not None:
+            remaining[alternative], remaining[-1] = remaining[-1], remaining[alternative]
+        else:
+            # The only unplayed song was just heard in another category.
+            remaining.clear()
+            remaining.extend(song for song in songs if song != last_song)
+            random.shuffle(remaining)
+    return remaining.pop()
+
+
 def start_song_for_keyword(keyword, playlist_name):
 
     if not isinstance(playlist_name, str) or not playlist_name.strip():
@@ -75,7 +107,8 @@ def start_song_for_keyword(keyword, playlist_name):
         print("No songs were found in the five activity categories.")
         return None
 
-    song_name = random.choice(music_library[category])
+    playlist_name = playlist_name.strip()
+    song_name = _choose_song(playlist_name, category, music_library[category])
     script = '''
     on run argv
         set songName to item 1 of argv
@@ -89,7 +122,7 @@ def start_song_for_keyword(keyword, playlist_name):
                 return "TRACK_NOT_FOUND"
             end if
             set selectedTrack to item 1 of matchingTracks
-            play selectedTrack
+            play selectedTrack with once
             set trackID to ""
             try
                 set trackID to persistent ID of selectedTrack as text
@@ -122,6 +155,7 @@ def start_song_for_keyword(keyword, playlist_name):
 
     track_id = fields[1] if len(fields) > 1 else ""
     title = fields[2] if len(fields) > 2 else song_name
+    LAST_PLAYED[playlist_name] = song_name
     print(f'Playing "{title}" from "{category}" in "{playlist_name}".')
     return PlaybackSelection(title=title, track_id=track_id, category=category)
 
@@ -201,23 +235,43 @@ def _start_for_current_context(playlist_name):
     """Read the user's current context and start a matching song.
 
     The context reader decides what activity/category the user is currently in,
-    and this function passes that category to start_song_for_keyword().
+    and this function passes that category to start_song_for_keyword(). When
+    the local Music Switcher browser page is active, it signals that playback
+    should wait instead of choosing a random song.
     """
     description, category = get_current_context()
+    if is_apple_music_app(description):
+        print("Apple Music is foreground. Leaving playback unchanged.")
+        return WAITING_FOR_CONTEXT
+    if is_music_switcher_url(description):
+        print("Music Switcher is open. Waiting for another tab or app before playback.")
+        return WAITING_FOR_CONTEXT
+
     print(f"Current context: {description or 'unknown'} -> {category or 'random'}")
     return start_song_for_keyword(category, playlist_name)
 
 
-def run_player(playlist_name, poll_seconds=1.0):
+def run_player(playlist_name, poll_seconds=DEFAULT_POLL_SECONDS):
     """Run the main context-aware music loop for the selected playlist.
 
-    First, this syncs the playlist into the local genre library and starts a
-    song based on the current context. Then it repeatedly checks Apple Music;
-    when the current song finishes or auto-advances, it reads the latest context
-    and starts another matching song.
+    First, this syncs the playlist into the local genre library. If the local
+    Music Switcher browser page is active, it waits without playing anything
+    until the user changes tabs or applications. It then starts a song based on
+    the current context. Each selected track plays once and stops, leaving
+    silence while the latest context is read and the next song is selected.
     """
     sync_playlist_library(playlist_name)
+    SONG_POOLS.clear()
+    LAST_PLAYED.clear()
     selection = _start_for_current_context(playlist_name)
+    try:
+        while selection is WAITING_FOR_CONTEXT:
+            time.sleep(poll_seconds)
+            selection = _start_for_current_context(playlist_name)
+    except KeyboardInterrupt:
+        print("\nStopped monitoring.")
+        return
+
     if selection is None:
         return
 
@@ -236,6 +290,12 @@ def run_player(playlist_name, poll_seconds=1.0):
                 # This is the only place the changing tab/app is read after
                 # startup, so changing context cannot interrupt a song.
                 next_selection = _start_for_current_context(playlist_name)
+                while next_selection is WAITING_FOR_CONTEXT:
+                    time.sleep(poll_seconds)
+                    next_selection = _start_for_current_context(playlist_name)
+                if next_selection is None:
+                    # Do not remain stuck monitoring the already finished song.
+                    return
                 if next_selection is not None:
                     selection = next_selection
                     current_snapshot = PlayerSnapshot(
@@ -252,9 +312,12 @@ def main():
     """Parse command-line arguments and start the context-aware player."""
     parser = argparse.ArgumentParser()
     parser.add_argument("playlist", help="Apple Music playlist name received from the frontend")
-    parser.add_argument("--poll-seconds", type=float, default=1.0)
+    parser.add_argument("--poll-seconds", type=float, default=DEFAULT_POLL_SECONDS)
     args = parser.parse_args()
-    run_player(args.playlist, max(0.1, args.poll_seconds))
+    try:
+        run_player(args.playlist, max(0.1, args.poll_seconds))
+    except (ValueError, RuntimeError, OSError) as error:
+        parser.exit(1, f"Music Switcher: {error}\n")
 
 
 if __name__ == "__main__":

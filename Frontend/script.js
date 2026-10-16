@@ -1,168 +1,101 @@
-const tracks = [
-  {
-    title: 'Midnight Switch',
-    artist: 'Demo Artist',
-    duration: '3:24',
-  },
-  {
-    title: 'Sensor Groove',
-    artist: 'Music Switcher',
-    duration: '2:58',
-  },
-  {
-    title: 'Frontend Flow',
-    artist: 'Template Band',
-    duration: '4:05',
-  },
-];
-
-const trackTitle = document.querySelector('#track-title');
-const trackArtist = document.querySelector('#track-artist');
-const trackList = document.querySelector('#track-list');
+const API_URL = 'http://127.0.0.1:8000';
 const playButton = document.querySelector('#play-btn');
-const nextButton = document.querySelector('#next-btn');
-const previousButton = document.querySelector('#previous-btn');
-const shuffleButton = document.querySelector('#shuffle-btn');
-const progressFill = document.querySelector('#progress-fill');
-const currentTime = document.querySelector('#current-time');
-const duration = document.querySelector('#duration');
 const volumeControl = document.querySelector('#volume-control');
-const autoSwitch = document.querySelector('#auto-switch');
+const playlistNameInput = document.querySelector('#playlist-name');
+const connectionStatus = document.querySelector('#connection-status');
 
-let currentTrackIndex = 0;
 let isPlaying = false;
-let progress = 0;
-let progressTimer = null;
 
-function renderPlaylist() {
-  trackList.innerHTML = '';
+function setConnectionStatus(message, state = '') {
+  connectionStatus.textContent = message;
+  connectionStatus.className = `connection-status${state ? ` is-${state}` : ''}`;
+}
 
-  tracks.forEach((track, index) => {
-    const listItem = document.createElement('li');
-    const button = document.createElement('button');
+async function requestApi(path, options = {}) {
+  const response = await fetch(`${API_URL}${path}`, options);
+  const result = await response.json();
 
-    button.className = `track-item${index === currentTrackIndex ? ' active' : ''}`;
-    button.type = 'button';
-    button.innerHTML = `
-      <span class="track-meta">
-        <strong>${track.title}</strong>
-        <span>${track.artist}</span>
-      </span>
-      <span class="track-duration">${track.duration}</span>
-    `;
+  if (!response.ok) {
+    throw new Error(result.error || 'The backend could not complete the request.');
+  }
 
-    button.addEventListener('click', () => {
-      selectTrack(index);
-      playTrack();
+  return result;
+}
+
+async function playMusic() {
+  const playlist = playlistNameInput.value.trim();
+
+  if (!playlist) {
+    setConnectionStatus('Enter an Apple Music playlist name before playing.', 'error');
+    playlistNameInput.focus();
+    return;
+  }
+
+  playButton.disabled = true;
+  setConnectionStatus('Starting Music Switcher…');
+
+  try {
+    await requestApi('/api/play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playlist }),
     });
 
-    listItem.appendChild(button);
-    trackList.appendChild(listItem);
-  });
+    isPlaying = true;
+    playButton.textContent = 'Pause';
+    setConnectionStatus(`Started with “${playlist}”. Switch to another tab or app to begin playback.`, 'success');
+  } catch (error) {
+    setConnectionStatus(
+      `Could not start playback: ${error.message}`,
+      'error',
+    );
+  } finally {
+    playButton.disabled = false;
+  }
 }
 
-function selectTrack(index) {
-  currentTrackIndex = index;
-  progress = 0;
+async function pauseMusic() {
+  playButton.disabled = true;
+  setConnectionStatus('Stopping Music Switcher…');
 
-  const track = tracks[currentTrackIndex];
-  trackTitle.textContent = track.title;
-  trackArtist.textContent = track.artist;
-  duration.textContent = track.duration;
-
-  updateProgress();
-  renderPlaylist();
-}
-
-function playTrack() {
-  isPlaying = true;
-  playButton.textContent = 'Pause';
-  startProgressTimer();
-}
-
-function pauseTrack() {
-  isPlaying = false;
-  playButton.textContent = 'Play';
-  stopProgressTimer();
+  try {
+    await requestApi('/api/stop', { method: 'POST' });
+    isPlaying = false;
+    playButton.textContent = 'Play';
+    setConnectionStatus('Music Switcher is stopped.', 'success');
+  } catch (error) {
+    setConnectionStatus(`Could not stop the backend. (${error.message})`, 'error');
+  } finally {
+    playButton.disabled = false;
+  }
 }
 
 function togglePlayback() {
   if (isPlaying) {
-    pauseTrack();
+    pauseMusic();
   } else {
-    playTrack();
-  }
-}
-
-function nextTrack() {
-  const nextIndex = (currentTrackIndex + 1) % tracks.length;
-  selectTrack(nextIndex);
-
-  if (isPlaying) {
-    playTrack();
-  }
-}
-
-function previousTrack() {
-  const previousIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
-  selectTrack(previousIndex);
-
-  if (isPlaying) {
-    playTrack();
-  }
-}
-
-function shuffleTracks() {
-  const randomIndex = Math.floor(Math.random() * tracks.length);
-  selectTrack(randomIndex);
-
-  if (!isPlaying) {
-    playTrack();
-  }
-}
-
-function updateProgress() {
-  progressFill.style.width = `${progress}%`;
-  currentTime.textContent = `0:${String(Math.floor(progress / 2)).padStart(2, '0')}`;
-}
-
-function startProgressTimer() {
-  stopProgressTimer();
-
-  progressTimer = window.setInterval(() => {
-    progress += 2;
-
-    if (progress >= 100) {
-      progress = 100;
-      updateProgress();
-
-      if (autoSwitch.checked) {
-        nextTrack();
-      } else {
-        pauseTrack();
-      }
-
-      return;
-    }
-
-    updateProgress();
-  }, 1000);
-}
-
-function stopProgressTimer() {
-  if (progressTimer) {
-    window.clearInterval(progressTimer);
-    progressTimer = null;
+    playMusic();
   }
 }
 
 playButton.addEventListener('click', togglePlayback);
-nextButton.addEventListener('click', nextTrack);
-previousButton.addEventListener('click', previousTrack);
-shuffleButton.addEventListener('click', shuffleTracks);
 
 volumeControl.addEventListener('input', (event) => {
   console.log(`Volume changed to ${event.target.value}%`);
 });
 
-selectTrack(currentTrackIndex);
+async function checkBackendStatus() {
+  try {
+    const { running } = await requestApi('/api/status');
+    isPlaying = running;
+    playButton.textContent = running ? 'Pause' : 'Play';
+    setConnectionStatus(
+      running ? 'Music Switcher backend is currently playing.' : 'Music Switcher backend is ready.',
+      'success',
+    );
+  } catch (error) {
+    setConnectionStatus('Backend is offline. Run Backend/api_server.py to connect it.', 'error');
+  }
+}
+
+checkBackendStatus();

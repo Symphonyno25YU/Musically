@@ -1,6 +1,7 @@
 import json
 import subprocess
 import time
+import warnings
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -37,6 +38,12 @@ def get_chrome_url():
     )
 
     if result.returncode != 0:
+        warnings.warn(
+            "Could not read Chrome's active tab URL: "
+            + (result.stderr.strip() or "AppleScript failed without an error message."),
+            RuntimeWarning,
+            stacklevel=2,
+        )
         return None
 
     url = result.stdout.strip()
@@ -73,8 +80,14 @@ def get_current_chrome_context():
     current_url = get_chrome_url()
     if not current_url:
         return None, None
-    keyword = url_to_keyword(current_url)
-    return current_url, get_category(keyword)
+    # Check subdomain and site labels: docs.google.com matches docs, while
+    # en.wikipedia.org and github.dev match wikipedia and github respectively.
+    hostname = urlparse(current_url).hostname or ""
+    for label in hostname.casefold().split(".")[:-1]:
+        category = get_category(label)
+        if category:
+            return current_url, category
+    return current_url, None
 
 
 def main():
