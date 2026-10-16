@@ -48,7 +48,7 @@ def run():
     signal.signal(signal.SIGINT, stop_services)
     signal.signal(signal.SIGTERM, stop_services)
 
-    print("Music Switcher is running:")
+    print(f"Welcome to Music switcher: enter http://{HOST}:{FRONTEND_PORT} in your browser.")
     print(f"  Frontend: http://{HOST}:{FRONTEND_PORT}")
     print("  Backend:  http://127.0.0.1:8000")
     print("Press Control+C to stop both services.")

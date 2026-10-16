@@ -1,4 +1,56 @@
 {
+  "context_rules": {
+    "apps": {
+      "Visual Studio Code": "deepthinking",
+      "Terminal": "deepthinking",
+      "iTerm2": "deepthinking",
+      "Xcode": "deepthinking",
+      "PyCharm": "deepthinking",
+      "JupyterLab": "deepthinking",
+      "RStudio": "deepthinking",
+      "Microsoft Word": "workstudy",
+      "Microsoft Excel": "workstudy",
+      "Pages": "workstudy",
+      "Numbers": "workstudy",
+      "Preview": "workstudy",
+      "Notion": "workstudy",
+      "Figma": "creativity",
+      "Canva": "creativity",
+      "Code": "workstudy",
+      "Adobe Photoshop": "creativity",
+      "Adobe Illustrator": "creativity",
+      "Logic Pro": "creativity",
+      "GarageBand": "creativity",
+      "Ableton Live": "creativity",
+      "Steam": "intense",
+      "Chess": "intense"
+    },
+    "websites": {
+      "docs": "workstudy",
+      "Canvas": "workstudy",
+      "Gradescope": "workstudy",
+      "Overleaf": "workstudy",
+      "Notion": "workstudy",
+      "ChatGPT": "deepthinking",
+      "GitHub": "deepthinking",
+      "Claude": "deepthinking",
+      "StackOverflow": "deepthinking",
+      "LeetCode": "deepthinking",
+      "scholar": "deepthinking",
+      "Wikipedia": "deepthinking",
+      "Figma": "creativity",
+      "Canva": "creativity",
+      "Pinterest": "creativity",
+      "Behance": "creativity",
+      "Chess": "intense",
+      "TradingView": "intense",
+      "ESPN": "intense",
+      "Instagram": "relaxation",
+      "Reddit": "relaxation",
+      "Amazon": "relaxation"
+    }
+  },
+
   "default_category": "others",
   "categories": {
     "workstudy": {
@@ -32,55 +84,18 @@
       "playback": "random"
     }
   },
-  "context_rules": {
-    "apps": {
-      "Visual Studio Code": "deepthinking",
-      "Terminal": "deepthinking",
-      "iTerm2": "deepthinking",
-      "Xcode": "deepthinking",
-      "PyCharm": "deepthinking",
-      "JupyterLab": "deepthinking",
-      "RStudio": "deepthinking",
-      "Microsoft Word": "workstudy",
-      "Microsoft Excel": "workstudy",
-      "Pages": "workstudy",
-      "Numbers": "workstudy",
-      "Preview": "workstudy",
-      "Notion": "workstudy",
-      "Figma": "creativity",
-      "Canva": "creativity",
-      "Adobe Photoshop": "creativity",
-      "Adobe Illustrator": "creativity",
-      "Logic Pro": "creativity",
-      "GarageBand": "creativity",
-      "Ableton Live": "creativity",
-      "Steam": "intense",
-      "Chess": "intense"
-    },
-    "websites": {
-      "docs": "workstudy",
-      "Canvas": "workstudy",
-      "Gradescope": "workstudy",
-      "Overleaf": "workstudy",
-      "Notion": "workstudy",
-      "ChatGPT": "deepthinking",
-      "GitHub": "deepthinking",
-      "StackOverflow": "deepthinking",
-      "LeetCode": "deepthinking",
-      "scholar": "deepthinking",
-      "Wikipedia": "deepthinking",
-      "Figma": "creativity",
-      "Canva": "creativity",
-      "Pinterest": "creativity",
-      "Behance": "creativity",
-      "Chess": "intense",
-      "TradingView": "intense",
-      "ESPN": "intense",
-      "Instagram": "relaxation",
-      "Reddit": "relaxation",
-      "Amazon": "relaxation"
-    }
-  },
+
+
+
+
+
+
+
+
+
+
+
+
   "music_library_source": {
     "application": "Music",
     "access_method": "AppleScript",

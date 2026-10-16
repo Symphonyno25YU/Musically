@@ -5,9 +5,11 @@ import random
 import subprocess
 import time
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 from context_reader import get_current_context, is_apple_music_app, is_music_switcher_url
 from database import load_music_library
+from Sensor.test_chrome_url import get_category, url_to_keyword
 from Sync_library import CATEGORIES, sync_playlist_library
 
 
@@ -247,7 +249,17 @@ def _start_for_current_context(playlist_name):
         print("Music Switcher is open. Waiting for another tab or app before playback.")
         return WAITING_FOR_CONTEXT
 
-    print(f"Current context: {description or 'unknown'} -> {category or 'random'}")
+    keyword = description
+    hostname = urlparse(description or "").hostname
+    if hostname:
+        keyword = next(
+            (label for label in hostname.casefold().split(".")[:-1] if get_category(label)),
+            url_to_keyword(description),
+        )
+
+
+    print(f"Current website: {description or 'unknown'}")
+    print(f"{keyword or 'unknown'} -> {category or 'random'}")
     return start_song_for_keyword(category, playlist_name)
 
 

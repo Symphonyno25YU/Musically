@@ -179,6 +179,25 @@ class SongSelectionTests(unittest.TestCase):
 
 
 class CompletionTests(unittest.TestCase):
+    @patch("builtins.print")
+    @patch("playMusicofGenre.start_song_for_keyword")
+    @patch("playMusicofGenre.get_current_context")
+    def test_context_log_shows_keyword_instead_of_url(self, context, start, output):
+        cases = [
+            ("https://www.reddit.com/r/CLine/submit/", "relaxation", "reddit"),
+            ("https://en.wikipedia.org/wiki/Music", "deepthinking", "wikipedia"),
+            ("https://docs.google.com/document/d/123", "workstudy", "docs"),
+            ("https://www.example.com/private/path", "others", "example"),
+            ("Figma", "creativity", "Figma"),
+            (None, None, "unknown"),
+        ]
+        for description, category, keyword in cases:
+            with self.subTest(description=description):
+                context.return_value = (description, category)
+                player._start_for_current_context("mix")
+                output.assert_called_with(f"{keyword} -> {category or 'random'}")
+                start.assert_called_with(category, "mix")
+
     def setUp(self):
         self.selection = player.PlaybackSelection("First", "id-1", "workstudy")
 
